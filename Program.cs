@@ -31,15 +31,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHttpsRedirection();
 }
 
 app.UseCors("AllowAll");
-
-// Only use HTTPS in development
-if (app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
 
 // API Endpoints
 app.MapPost("/api/appointments/book", async (AppointmentRequest request, DatabaseService dbService) =>
@@ -79,7 +74,6 @@ app.MapPost("/api/appointments/book", async (AppointmentRequest request, Databas
         }
         else
         {
-            // Default to 10:00 if time parsing fails
             appointmentDateTime = appointmentDateTime.AddHours(10);
         }
 
@@ -205,7 +199,6 @@ app.MapGet("/api/appointments/available", async (DateTime date, DatabaseService 
         using var connection = new SqlConnection(builder.Configuration.GetConnectionString("DentneDConnection"));
         await connection.OpenAsync();
 
-        // Check existing appointments for the date
         var query = @"SELECT appointments_from 
                       FROM appointments 
                       WHERE CAST(appointments_from AS DATE) = @Date 
@@ -226,7 +219,6 @@ app.MapGet("/api/appointments/available", async (DateTime date, DatabaseService 
             }
         }
 
-        // Define available time slots
         var allSlots = new[] { "09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00" };
         var availableSlots = allSlots.Except(bookedTimes).ToList();
 
@@ -245,19 +237,12 @@ app.MapGet("/api/appointments", async (DatabaseService dbService) =>
         using var connection = new SqlConnection(builder.Configuration.GetConnectionString("DentneDConnection"));
         await connection.OpenAsync();
 
-        var query = @"
-            SELECT 
-                a.appointments_id,
-                a.appointments_from,
-                a.appointments_to,
-                a.appointments_title,
-                a.appointments_notes,
-                p.patients_id,
-                p.patients_name,
-                p.patients_surname
-            FROM appointments a
-            INNER JOIN patients p ON a.patients_id = p.patients_id
-            ORDER BY a.appointments_from DESC";
+        var query = @"SELECT a.appointments_id, a.appointments_from, a.appointments_to, 
+                             a.appointments_title, a.appointments_notes,
+                             p.patients_id, p.patients_name, p.patients_surname
+                      FROM appointments a
+                      INNER JOIN patients p ON a.patients_id = p.patients_id
+                      ORDER BY a.appointments_from DESC";
 
         using var command = new SqlCommand(query, connection);
         using var reader = await command.ExecuteReaderAsync();
@@ -292,19 +277,12 @@ app.MapGet("/api/appointments/{id}", async (int id, DatabaseService dbService) =
         using var connection = new SqlConnection(builder.Configuration.GetConnectionString("DentneDConnection"));
         await connection.OpenAsync();
 
-        var query = @"
-            SELECT 
-                a.appointments_id,
-                a.appointments_from,
-                a.appointments_to,
-                a.appointments_title,
-                a.appointments_notes,
-                p.patients_id,
-                p.patients_name,
-                p.patients_surname
-            FROM appointments a
-            INNER JOIN patients p ON a.patients_id = p.patients_id
-            WHERE a.appointments_id = @AppointmentId";
+        var query = @"SELECT a.appointments_id, a.appointments_from, a.appointments_to, 
+                             a.appointments_title, a.appointments_notes,
+                             p.patients_id, p.patients_name, p.patients_surname
+                      FROM appointments a
+                      INNER JOIN patients p ON a.patients_id = p.patients_id
+                      WHERE a.appointments_id = @AppointmentId";
 
         using var command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@AppointmentId", id);

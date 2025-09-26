@@ -1,0 +1,30 @@
+# Visual Studio files
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.vsp
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+x64/
+x86/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# NuGet packages
+*.nupkg
+packages/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Docker
+Dockerfile*
+.dockerignore

@@ -1,23 +1,13 @@
-﻿# Build stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+﻿FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-
-# Copy project file
-COPY ["DentneDAPI/DentneDAPI.csproj", "DentneDAPI/"]
-RUN dotnet restore "DentneDAPI/DentneDAPI.csproj"
-
-# Copy everything else
 COPY . .
-WORKDIR "/src/DentneDAPI"
-RUN dotnet build "DentneDAPI.csproj" -c Release -o /app/build
+RUN dotnet restore "DentneDAPI/DentneDAPI.csproj"
+RUN dotnet publish "DentneDAPI/DentneDAPI.csproj" -c Release -o /app/publish
 
-FROM build AS publish
-RUN dotnet publish "DentneDAPI.csproj" -c Release -o /app/publish
-
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-COPY --from=publish /app/publish .
-EXPOSE 8080
+COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://*:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "DentneDAPI.dll"]

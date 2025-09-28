@@ -37,12 +37,20 @@ public class Program
         {
             app.UseSwagger();
             app.UseSwaggerUI();
-            app.UseHttpsRedirection();
+            app.UseHttpsRedirection(); // Only in development
+        }
+        else
+        {
+            // In production, don't use HTTPS redirection
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
 
         app.UseCors("AllowAll");
 
-        // API Endpoints - COPY ALL YOUR EXISTING ENDPOINTS HERE
+        app.UseAuthorization();
+
+        // API Endpoints - ALL YOUR EXISTING ENDPOINTS GO HERE
         app.MapPost("/api/appointments/book", async (AppointmentRequest request, DatabaseService dbService) =>
         {
             try
@@ -108,6 +116,9 @@ public class Program
                 return Results.Problem($"Error booking appointment: {ex.Message}");
             }
         });
+
+        // Add all your other endpoints here (patients, treatments, doctors, appointments, etc.)
+        // ... [COPY ALL YOUR OTHER ENDPOINTS FROM THE PREVIOUS VERSION]
 
         app.MapGet("/api/patients", async (DatabaseService dbService) =>
         {

@@ -99,6 +99,11 @@ app.MapGet("/api/patients", async (DatabaseService dbService) =>
     }
 });
 
+// Add this before app.Run()
+app.MapGet("/", () => "DentneD API is running! Use /api/patients, /api/appointments, etc.");
+
+app.MapGet("/test", () => new { message = "API is working!", timestamp = DateTime.UtcNow });
+
 app.Run();
 
 // Model classes (add these at the bottom of the same file)

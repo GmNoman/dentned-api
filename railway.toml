@@ -1,5 +1,0 @@
-﻿[build]
-builder = "nixpacks"
-
-[deploy]
-startCommand = "cd DentneDAPI && dotnet DentneDAPI.dll --urls http://0.0.0.0:$PORT"

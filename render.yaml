@@ -1,7 +1,0 @@
-﻿services:
-  - type: web
-    name: dentned-api
-    env: dotnet
-    plan: free
-    buildCommand: dotnet publish -c Release -o ./publish
-    startCommand: dotnet ./publish/DentneDAPI.dll

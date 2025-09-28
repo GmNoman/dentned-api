@@ -99,10 +99,30 @@ app.MapGet("/api/patients", async (DatabaseService dbService) =>
     }
 });
 
-// Add this before app.Run()
-app.MapGet("/", () => "DentneD API is running! Use /api/patients, /api/appointments, etc.");
+// Add these endpoints before app.Run()
 
-app.MapGet("/test", () => new { message = "API is working!", timestamp = DateTime.UtcNow });
+// Root endpoint
+// Root endpoint
+app.MapGet("/", () => "Dental API is running! Use these endpoints:\n\n" +
+    "/api/patients - Get all patients\n" +
+    "/api/treatments - Get all treatments\n" +
+    "/api/doctors - Get all doctors\n" +
+    "/api/appointments - Get all appointments\n" +
+    "/api/appointments/book - Book new appointment");
+
+// Health check endpoint
+app.MapGet("/health", () => new {
+    status = "healthy",
+    timestamp = DateTime.UtcNow,
+    message = "Dental API is running successfully"
+});
+
+// Test endpoint
+app.MapGet("/test", () => new {
+    message = "API test successful",
+    environment = "Development",
+    port = 8080
+});
 
 app.Run();
 

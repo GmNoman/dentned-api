@@ -1,2 +1,2 @@
 ﻿[deploy]
-startCommand = "dotnet DentneDAPI.dll --urls http://0.0.0.0:$PORT"
+startCommand = "dotnet DentneDAPI.dll --urls http://0.0.0.0:8080"

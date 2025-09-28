@@ -4,6 +4,7 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<OutputType>Exe</OutputType>
+		<RuntimeIdentifier>linux-x64</RuntimeIdentifier>
 	</PropertyGroup>
 
 	<ItemGroup>

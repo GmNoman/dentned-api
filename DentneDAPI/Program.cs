@@ -10,7 +10,7 @@ builder.Services.AddScoped<DatabaseService>();
 var app = builder.Build();
 
 // Simple test endpoint
-app.MapGet("/", () => "DentneD API is running!");
+//app.MapGet("/", () => "DentneD API is running!");
 
 // Your existing endpoints
 app.MapPost("/api/appointments/book", async (AppointmentRequest request, DatabaseService dbService) =>

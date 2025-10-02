@@ -13,3 +13,13 @@
         public string? Notes { get; set; }
     }
 }
+// Add this record class for the appointment booking request
+public record AppointmentBookingRequest(
+    string PatientFirstName,
+    string PatientLastName,
+    string AppointmentDate,
+    string AppointmentTime,
+    int DoctorId,
+    string? ServiceType,
+    string? Notes
+);

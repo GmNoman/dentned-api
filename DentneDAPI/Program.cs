@@ -382,12 +382,123 @@ app.MapGet("/api/test-comprehensive", () =>
     });
 });
 
+
 // Health check endpoint
 app.MapGet("/health", () => new {
     status = "healthy",
     timestamp = DateTime.UtcNow,
     message = "Dental API is running successfully"
 });
+
+// Check appointment availability
+app.MapGet("/api/appointments/availability", async (string? date, string? startTime, IConfiguration config) =>
+{
+    var connStr = config.GetConnectionString("DentneDConnection");
+    await using var conn = new SqlConnection(connStr);
+    await conn.OpenAsync();
+
+    var sql = @"
+      SELECT start_time, end_time, doctor_id
+      FROM appointments
+      WHERE appointment_date = @date
+        AND start_time >= @startTime
+        AND is_available = 1
+      ORDER BY start_time
+    ";
+
+    await using var cmd = new SqlCommand(sql, conn);
+    cmd.Parameters.AddWithValue("@date", date ?? "");
+    cmd.Parameters.AddWithValue("@startTime", startTime ?? "");
+
+    var slots = new List<object>();
+    await using var rdr = await cmd.ExecuteReaderAsync();
+    while (await rdr.ReadAsync())
+    {
+        slots.Add(new
+        {
+            startTime = rdr["start_time"],
+            endTime = rdr["end_time"],
+            doctorId = rdr["doctor_id"]
+        });
+    }
+
+    return Results.Ok(new
+    {
+        success = slots.Count > 0,
+        availableSlots = slots,
+        totalSlots = slots.Count
+    });
+});
+
+// Search doctors
+app.MapGet("/api/doctors/search", async (string? name, string? specialty, IConfiguration config) =>
+{
+    var connStr = config.GetConnectionString("DentneDConnection");
+    await using var conn = new SqlConnection(connStr);
+    await conn.OpenAsync();
+
+    var sql = @"
+      SELECT 
+        patients_id       AS doctorId,
+        patients_name     AS firstName,
+        patients_surname  AS lastName,
+        patients_doctext  AS specialty
+      FROM patients
+      WHERE patients_doctext IS NOT NULL
+        AND (@name      IS NULL OR patients_name    LIKE '%' + @name + '%')
+        AND (@specialty IS NULL OR patients_doctext LIKE '%' + @specialty + '%');
+    ";
+
+    await using var cmd = new SqlCommand(sql, conn);
+    cmd.Parameters.AddWithValue("@name", (object?)name ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("@specialty", (object?)specialty ?? DBNull.Value);
+
+    var doctors = new List<object>();
+    await using var rdr = await cmd.ExecuteReaderAsync();
+    while (await rdr.ReadAsync())
+    {
+        doctors.Add(new
+        {
+            doctorId = (int)rdr["doctorId"],
+            firstName = (string)rdr["firstName"],
+            lastName = (string)rdr["lastName"],
+            specialty = (string)rdr["specialty"]
+        });
+    }
+
+    return Results.Ok(new
+    {
+        success = doctors.Count > 0,
+        doctors = doctors,
+        totalFound = doctors.Count
+    });
+});
+
+
+// Book appointment
+app.MapPost("/api/appointments/book", async (AppointmentBookingRequest request, IConfiguration config) =>
+{
+    try
+    {
+        // For now, return mock success to test the endpoint
+        return Results.Ok(new
+        {
+            success = true,
+            message = "Appointment booked successfully!",
+            appointmentId = 12345,
+            patientName = $"{request.PatientFirstName} {request.PatientLastName}",
+            appointmentDate = request.AppointmentDate,
+            appointmentTime = request.AppointmentTime,
+            doctorId = request.DoctorId
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Appointment booking failed: {ex.Message}");
+    }
+});
+
+
 
 app.Run();
 

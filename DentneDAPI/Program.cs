@@ -25,14 +25,14 @@ app.MapPost("/api/appointments/book", async (AppointmentRequest request, IConfig
         // Get or create default doctor
         int doctorId;
         using var doctorCommand = new SqlCommand(
-            "SELECT ISNULL((SELECT TOP 1 doctors_id FROM doctors WHERE doctors_isarchived = 0), 0)", connection);
+            "SELECT ISNULL((SELECT TOP 1 doctors_id FROM doctors), 0)", connection);
         var existingDoctorId = await doctorCommand.ExecuteScalarAsync();
 
         if (Convert.ToInt32(existingDoctorId) == 0)
         {
             // Create default doctor
             using var createDoctorCommand = new SqlCommand(
-                "INSERT INTO doctors (doctors_name, doctors_surname, doctors_isarchived) OUTPUT INSERTED.doctors_id VALUES ('Default', 'Dentist', 0)",
+                "INSERT INTO doctors (doctors_name, doctors_surname) OUTPUT INSERTED.doctors_id VALUES ('Default', 'Dentist')",
                 connection);
             doctorId = Convert.ToInt32(await createDoctorCommand.ExecuteScalarAsync());
         }
@@ -44,14 +44,14 @@ app.MapPost("/api/appointments/book", async (AppointmentRequest request, IConfig
         // Get or create default room
         int roomId;
         using var roomCommand = new SqlCommand(
-            "SELECT ISNULL((SELECT TOP 1 rooms_id FROM rooms WHERE rooms_isarchived = 0), 0)", connection);
+            "SELECT ISNULL((SELECT TOP 1 rooms_id FROM rooms), 0)", connection);
         var existingRoomId = await roomCommand.ExecuteScalarAsync();
 
         if (Convert.ToInt32(existingRoomId) == 0)
         {
             // Create default room
             using var createRoomCommand = new SqlCommand(
-                "INSERT INTO rooms (rooms_name, rooms_isarchived) OUTPUT INSERTED.rooms_id VALUES ('Exam Room 1', 0)",
+                "INSERT INTO rooms (rooms_name) OUTPUT INSERTED.rooms_id VALUES ('Exam Room 1')",
                 connection);
             roomId = Convert.ToInt32(await createRoomCommand.ExecuteScalarAsync());
         }
@@ -78,11 +78,11 @@ app.MapPost("/api/appointments/book", async (AppointmentRequest request, IConfig
         {
             // Create new patient
             using var createPatientCommand = new SqlCommand(
-                "INSERT INTO patients (patients_name, patients_surname, patients_birthdate, patients_isarchived) OUTPUT INSERTED.patients_id VALUES (@FirstName, @LastName, @BirthDate, 0)",
+                "INSERT INTO patients (patients_name, patients_surname, patients_birthdate) OUTPUT INSERTED.patients_id VALUES (@FirstName, @LastName, @BirthDate)",
                 connection);
             createPatientCommand.Parameters.AddWithValue("@FirstName", request.PatientFirstName);
             createPatientCommand.Parameters.AddWithValue("@LastName", request.PatientLastName);
-            createPatientCommand.Parameters.AddWithValue("@BirthDate", DBNull.Value); // Null birthdate
+            createPatientCommand.Parameters.AddWithValue("@BirthDate", DBNull.Value);
             patientId = Convert.ToInt32(await createPatientCommand.ExecuteScalarAsync());
         }
 

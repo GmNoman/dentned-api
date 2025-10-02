@@ -1,4 +1,5 @@
 using DentneDAPI.Services;
+using Microsoft.Data.SqlClient;
 using System.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,53 +14,110 @@ var app = builder.Build();
 //app.MapGet("/", () => "DentneD API is running!");
 
 // Your existing endpoints
-app.MapPost("/api/appointments/book", async (AppointmentRequest request, DatabaseService dbService) =>
+app.MapPost("/api/appointments/book", async (AppointmentRequest request, IConfiguration config) =>
 {
     try
     {
-        // Validate required fields
-        if (string.IsNullOrEmpty(request.PatientFirstName) || string.IsNullOrEmpty(request.PatientLastName))
-            return Results.BadRequest("First name and last name are required.");
+        var connectionString = config.GetConnectionString("DentneDConnection");
+        using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
 
-        if (request.AppointmentDate == default)
-            return Results.BadRequest("Appointment date is required.");
+        // Get or create default doctor
+        int doctorId;
+        using var doctorCommand = new SqlCommand(
+            "SELECT ISNULL((SELECT TOP 1 doctors_id FROM doctors WHERE doctors_isarchived = 0), 0)", connection);
+        var existingDoctorId = await doctorCommand.ExecuteScalarAsync();
 
-        if (string.IsNullOrEmpty(request.AppointmentTime))
-            return Results.BadRequest("Appointment time is required.");
-
-        // Create patient
-        var newPatient = new Patient
+        if (Convert.ToInt32(existingDoctorId) == 0)
         {
-            FirstName = request.PatientFirstName,
-            LastName = request.PatientLastName
-        };
-
-        var patientId = await dbService.CreatePatientAsync(newPatient);
-
-        // Combine date and time
-        var appointmentDateTime = request.AppointmentDate.Date;
-        if (TimeSpan.TryParse(request.AppointmentTime.Replace(" AM", "").Replace(" PM", ""), out var time))
-            appointmentDateTime = appointmentDateTime.Add(time);
+            // Create default doctor
+            using var createDoctorCommand = new SqlCommand(
+                "INSERT INTO doctors (doctors_name, doctors_surname, doctors_isarchived) OUTPUT INSERTED.doctors_id VALUES ('Default', 'Dentist', 0)",
+                connection);
+            doctorId = Convert.ToInt32(await createDoctorCommand.ExecuteScalarAsync());
+        }
         else
-            appointmentDateTime = appointmentDateTime.AddHours(10);
-
-        // Create appointment
-        var appointment = new Appointment
         {
-            PatientId = patientId,
-            AppointmentFrom = appointmentDateTime,
-            Procedure = request.Procedure ?? "Dental Appointment",
-            Notes = request.Notes
-        };
+            doctorId = Convert.ToInt32(existingDoctorId);
+        }
 
-        var appointmentId = await dbService.CreateAppointmentAsync(appointment);
+        // Get or create default room
+        int roomId;
+        using var roomCommand = new SqlCommand(
+            "SELECT ISNULL((SELECT TOP 1 rooms_id FROM rooms WHERE rooms_isarchived = 0), 0)", connection);
+        var existingRoomId = await roomCommand.ExecuteScalarAsync();
+
+        if (Convert.ToInt32(existingRoomId) == 0)
+        {
+            // Create default room
+            using var createRoomCommand = new SqlCommand(
+                "INSERT INTO rooms (rooms_name, rooms_isarchived) OUTPUT INSERTED.rooms_id VALUES ('Exam Room 1', 0)",
+                connection);
+            roomId = Convert.ToInt32(await createRoomCommand.ExecuteScalarAsync());
+        }
+        else
+        {
+            roomId = Convert.ToInt32(existingRoomId);
+        }
+
+        // Create patient if they don't exist, or get existing patient
+        int patientId;
+        using var patientCheckCommand = new SqlCommand(
+            "SELECT patients_id FROM patients WHERE patients_name = @FirstName AND patients_surname = @LastName",
+            connection);
+        patientCheckCommand.Parameters.AddWithValue("@FirstName", request.PatientFirstName);
+        patientCheckCommand.Parameters.AddWithValue("@LastName", request.PatientLastName);
+
+        var existingPatientId = await patientCheckCommand.ExecuteScalarAsync();
+
+        if (existingPatientId != null)
+        {
+            patientId = Convert.ToInt32(existingPatientId);
+        }
+        else
+        {
+            // Create new patient
+            using var createPatientCommand = new SqlCommand(
+                "INSERT INTO patients (patients_name, patients_surname, patients_birthdate, patients_isarchived) OUTPUT INSERTED.patients_id VALUES (@FirstName, @LastName, @BirthDate, 0)",
+                connection);
+            createPatientCommand.Parameters.AddWithValue("@FirstName", request.PatientFirstName);
+            createPatientCommand.Parameters.AddWithValue("@LastName", request.PatientLastName);
+            createPatientCommand.Parameters.AddWithValue("@BirthDate", DBNull.Value); // Null birthdate
+            patientId = Convert.ToInt32(await createPatientCommand.ExecuteScalarAsync());
+        }
+
+        // Create appointment with all required fields
+        var appointmentDateTime = request.AppointmentDate;
+        if (!string.IsNullOrEmpty(request.AppointmentTime))
+        {
+            if (TimeSpan.TryParse(request.AppointmentTime.Replace(" AM", "").Replace(" PM", ""), out var time))
+                appointmentDateTime = appointmentDateTime.Date.Add(time);
+        }
+
+        using var appointmentCommand = new SqlCommand(
+            @"INSERT INTO appointments (patients_id, doctors_id, rooms_id, appointments_from, appointments_to, appointments_procedure, appointments_notes) 
+              OUTPUT INSERTED.appointments_id 
+              VALUES (@PatientId, @DoctorId, @RoomId, @AppointmentFrom, @AppointmentTo, @Procedure, @Notes)",
+            connection);
+
+        appointmentCommand.Parameters.AddWithValue("@PatientId", patientId);
+        appointmentCommand.Parameters.AddWithValue("@DoctorId", doctorId);
+        appointmentCommand.Parameters.AddWithValue("@RoomId", roomId);
+        appointmentCommand.Parameters.AddWithValue("@AppointmentFrom", appointmentDateTime);
+        appointmentCommand.Parameters.AddWithValue("@AppointmentTo", appointmentDateTime.AddHours(1));
+        appointmentCommand.Parameters.AddWithValue("@Procedure", request.Procedure ?? "Dental Checkup");
+        appointmentCommand.Parameters.AddWithValue("@Notes", request.Notes ?? "");
+
+        var appointmentId = await appointmentCommand.ExecuteScalarAsync();
 
         return Results.Ok(new
         {
             success = true,
             message = "Appointment booked successfully",
             appointmentId = appointmentId,
-            patientId = patientId
+            patientId = patientId,
+            doctorId = doctorId,
+            roomId = roomId
         });
     }
     catch (Exception ex)

@@ -22,7 +22,7 @@ app.MapPost("/api/appointments/book", async (AppointmentRequest request, IConfig
         using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync();
 
-        // Get or create default doctor
+        // Get or create default doctor (with all required fields)
         int doctorId;
         using var doctorCommand = new SqlCommand(
             "SELECT ISNULL((SELECT TOP 1 doctors_id FROM doctors), 0)", connection);
@@ -30,9 +30,9 @@ app.MapPost("/api/appointments/book", async (AppointmentRequest request, IConfig
 
         if (Convert.ToInt32(existingDoctorId) == 0)
         {
-            // Create default doctor
+            // Create default doctor with all required fields
             using var createDoctorCommand = new SqlCommand(
-                "INSERT INTO doctors (doctors_name, doctors_surname) OUTPUT INSERTED.doctors_id VALUES ('Default', 'Dentist')",
+                "INSERT INTO doctors (doctors_name, doctors_surname, doctors_doctext, doctors_username, doctors_password) OUTPUT INSERTED.doctors_id VALUES ('Default', 'Dentist', 'General Dentist', 'default', 'password123')",
                 connection);
             doctorId = Convert.ToInt32(await createDoctorCommand.ExecuteScalarAsync());
         }
@@ -51,7 +51,7 @@ app.MapPost("/api/appointments/book", async (AppointmentRequest request, IConfig
         {
             // Create default room
             using var createRoomCommand = new SqlCommand(
-                "INSERT INTO rooms (rooms_name) OUTPUT INSERTED.rooms_id VALUES ('Exam Room 1')",
+                "INSERT INTO rooms (rooms_name, rooms_color) OUTPUT INSERTED.rooms_id VALUES ('Exam Room 1', 'B')",
                 connection);
             roomId = Convert.ToInt32(await createRoomCommand.ExecuteScalarAsync());
         }

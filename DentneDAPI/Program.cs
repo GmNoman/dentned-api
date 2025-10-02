@@ -126,6 +126,71 @@ app.MapPost("/api/appointments/book", async (AppointmentRequest request, IConfig
     }
 });
 
+// Get all doctors
+app.MapGet("/api/doctors", async (IConfiguration config) =>
+{
+    try
+    {
+        var connectionString = config.GetConnectionString("DentneDConnection");
+        using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        var query = "SELECT doctors_id, doctors_name, doctors_surname, doctors_doctext FROM doctors";
+        using var command = new SqlCommand(query, connection);
+        using var reader = await command.ExecuteReaderAsync();
+
+        var doctors = new List<object>();
+        while (await reader.ReadAsync())
+        {
+            doctors.Add(new
+            {
+                DoctorId = reader.GetInt32("doctors_id"),
+                FirstName = reader.IsDBNull("doctors_name") ? null : reader.GetString("doctors_name"),
+                LastName = reader.IsDBNull("doctors_surname") ? null : reader.GetString("doctors_surname"),
+                Specialty = reader.IsDBNull("doctors_doctext") ? null : reader.GetString("doctors_doctext")
+            });
+        }
+
+        return Results.Ok(doctors);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error retrieving doctors: {ex.Message}");
+    }
+});
+
+// Get all rooms
+app.MapGet("/api/rooms", async (IConfiguration config) =>
+{
+    try
+    {
+        var connectionString = config.GetConnectionString("DentneDConnection");
+        using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        var query = "SELECT rooms_id, rooms_name, rooms_color FROM rooms";
+        using var command = new SqlCommand(query, connection);
+        using var reader = await command.ExecuteReaderAsync();
+
+        var rooms = new List<object>();
+        while (await reader.ReadAsync())
+        {
+            rooms.Add(new
+            {
+                RoomId = reader.GetInt32("rooms_id"),
+                Name = reader.IsDBNull("rooms_name") ? null : reader.GetString("rooms_name"),
+                Color = reader.IsDBNull("rooms_color") ? null : reader.GetString("rooms_color")
+            });
+        }
+
+        return Results.Ok(rooms);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error retrieving rooms: {ex.Message}");
+    }
+});
+
 app.MapGet("/api/patients", async (DatabaseService dbService) =>
 {
     try
